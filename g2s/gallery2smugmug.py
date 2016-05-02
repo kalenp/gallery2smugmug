@@ -1,3 +1,4 @@
 from . import app
+from . import gallery
 
-cli = app.CLI(None, None)
+cli = app.CLI(gallery.GalleryLoader, None)
