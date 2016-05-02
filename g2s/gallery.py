@@ -29,11 +29,35 @@ class Album(object):
         return self.title
 
 
-class GalleryLoader(object):
-    def __getitem__(self, key):
-        fs = GalleryFilesystem(key)
-        return Gallery(fs)
+class GalleryFilesystem(object):
+    def __init__(self, serializer):
+        self._serializer = serializer
+
+    @property
+    def albums(self):
+        albums = []
+        with open('albums/albumdb.dat', 'r') as albumdb_dat:
+            albumdb = self._serializer.loads(albumdb_dat.read())
+        for album in albumdb:
+            with open('albums/{}/album.dat'.format(album), 'r') as album_dat:
+                albums.append(self._serializer.loads(album_dat.read()))
+        return albums
 
 
-def parse_albumsdb(albumsdb):
-    return phpserialize.dict_to_list(phpserialize.loads(albumsdb))
+class Serializer(object):
+    def loads(self, data):
+        def object_hook(name, d):
+            name = name.lower()
+            if name != 'album':
+                raise TypeError('unknown type {}'.format(name))
+            fields = d['fields']
+            kwargs = {}
+            kwargs['title'] = fields['name']
+            if 'parentAlbumName' in fields:
+                kwargs['parent'] = fields['parentAlbumName']
+            return Album(**kwargs)
+
+        loaded = phpserialize.loads(data, object_hook=object_hook)
+        if isinstance(loaded, dict):
+            loaded = phpserialize.dict_to_list(loaded)
+        return loaded

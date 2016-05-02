@@ -1,14 +1,6 @@
+import os
+
 from g2s import gallery
-
-
-def test_parse_albums():
-    ALBUM_DB_DAT = '''a:2:{i:0;s:8:"Vacation";i:1;s:6:"Mexico";}'''
-    albums = gallery.parse_albumsdb(ALBUM_DB_DAT)
-
-    assert albums == [
-        "Vacation",
-        "Mexico",
-    ]
 
 
 class StaticGalleryFS(object):
@@ -37,3 +29,59 @@ def test_gallery_builds_tree():
         (vacation, 0),
         (mexico, 1),
     ]
+
+
+class TestSerializer(object):
+    VACATION = gallery.Album('Vacation')
+    MEXICO = gallery.Album('Mexico', parent='Vacation')
+    ALBUMS = ['vacation', 'mexico']
+
+    _serialization = {
+        'vacation': VACATION,
+        'mexico': MEXICO,
+        'albumdb': ALBUMS,
+    }
+
+    def loads(self, data):
+        return self._serialization[data]
+
+
+def test_galleryfs_load_albums(fs):
+    os.mkdir('albums')
+    with open('albums/albumdb.dat', 'w+') as albumdb:
+        albumdb.write('albumdb')
+    os.mkdir('albums/vacation')
+    with open('albums/vacation/album.dat', 'w+') as vacation:
+        vacation.write('vacation')
+    os.mkdir('albums/mexico')
+    with open('albums/mexico/album.dat', 'w+') as mexico:
+        mexico.write('mexico')
+
+    galleryfs = gallery.GalleryFilesystem(TestSerializer())
+
+    assert galleryfs.albums == [
+        TestSerializer.VACATION,
+        TestSerializer.MEXICO,
+    ]
+
+
+def test_unserialize_albumdb_dat():
+    ALBUM_DB_DAT = '''a:2:{i:0;s:8:"Vacation";i:1;s:6:"Mexico";}'''
+    serializer = gallery.Serializer()
+
+    albums = serializer.loads(ALBUM_DB_DAT)
+
+    assert albums == [
+        'Vacation',
+        'Mexico',
+    ]
+
+
+def test_unserialize_album_dat():
+    ALBUM_DAT = '''O:5:"Album":1:{s:6:"fields";a:2:{s:4:"name";s:6:"mexico";s:15:"parentAlbumName";s:8:"vacation";}}'''
+    serializer = gallery.Serializer()
+
+    album = serializer.loads(ALBUM_DAT)
+
+    assert album.name == 'mexico'
+    assert album.parent == 'vacation'
