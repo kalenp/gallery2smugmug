@@ -11,18 +11,18 @@ Utility to transfer PHP Gallery 1.5 photos to SmugMug.
 ## Usage
 
 ```shell
-$ ./gallery2smugmug -h
+$ gallery2smugmug --help
 
 Usage:
-  ./gallery2smugmug list [--gallery-path=<directory>]
+  gallery2smugmug list [--gallery-path=<directory>]
 
-  ./gallery2smugmug upload [--api_key=<api_key>]
-                           [--nick=<nickname>]
-                           [--gallery-path=<directory>]
-                           [--dry-run]
+  gallery2smugmug upload [--api_key=<api_key>]
+                         [--nick=<nickname>]
+                         [--gallery-path=<directory>]
+                         [--dry-run]
 
-  ./gallery2smugmug forget [--nickname=<nickname>]
-                           [--api-key]
+  gallery2smugmug forget [--nickname=<nickname>]
+                         [--api-key]
 ```
 
 The first time you upload with `gallery2smugmug`, you will be prompted to
