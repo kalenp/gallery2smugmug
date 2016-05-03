@@ -19,14 +19,21 @@ class Gallery(object):
 
 
 class Album(object):
-    def __init__(self, title, parent=None):
-        self.title = title
+    def __init__(self, name, parent=None, title=None, description=None):
+        self.name = name
+        self.description = description
         self.parent = parent
+        self.title = title
 
-    @property
-    def name(self):
-        '''Alias of title for compatibility with ParentNameTree'''
-        return self.title
+    @classmethod
+    def from_fields(cls, fields):
+        kwargs = {
+            key: value for (key, value) in fields.iteritems()
+            if key in ['name', 'title', 'description']
+        }
+        if 'parentAlbumName' in fields:
+            kwargs['parent'] = fields['parentAlbumName']
+        return cls(**kwargs)
 
 
 class GalleryFilesystem(object):
@@ -51,11 +58,7 @@ class Serializer(object):
             if name != 'album':
                 raise TypeError('unknown type {}'.format(name))
             fields = d['fields']
-            kwargs = {}
-            kwargs['title'] = fields['name']
-            if 'parentAlbumName' in fields:
-                kwargs['parent'] = fields['parentAlbumName']
-            return Album(**kwargs)
+            return Album.from_fields(fields)
 
         loaded = phpserialize.loads(data, object_hook=object_hook)
         if isinstance(loaded, dict):

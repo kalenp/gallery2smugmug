@@ -66,14 +66,14 @@ def test_galleryfs_load_albums(fs):
 
 
 def test_unserialize_albumdb_dat():
-    ALBUM_DB_DAT = '''a:2:{i:0;s:8:"Vacation";i:1;s:6:"Mexico";}'''
+    ALBUM_DB_DAT = '''a:2:{i:0;s:8:"vacation";i:1;s:6:"mexico";}'''
     serializer = gallery.Serializer()
 
     albums = serializer.loads(ALBUM_DB_DAT)
 
     assert albums == [
-        'Vacation',
-        'Mexico',
+        'vacation',
+        'mexico',
     ]
 
 
@@ -85,3 +85,35 @@ def test_unserialize_album_dat():
 
     assert album.name == 'mexico'
     assert album.parent == 'vacation'
+
+
+def test_unserialize_album_optional_parent():
+    ALBUM_DAT = '''O:5:"Album":1:{s:6:"fields";a:1:{s:4:"name";s:8:"vacation";}}'''
+    serializer = gallery.Serializer()
+
+    album = serializer.loads(ALBUM_DAT)
+
+    assert album.name == 'vacation'
+    assert album.parent == None
+
+
+def test_unserialize_album_case_insensitive():
+    ALBUM_DAT = '''O:5:"album":1:{s:6:"fields";a:1:{s:4:"name";s:8:"vacation";}}'''
+    serializer = gallery.Serializer()
+
+    album = serializer.loads(ALBUM_DAT)
+
+    assert album.name == 'vacation'
+    assert album.parent == None
+
+
+def test_unserialize_album_additional_properties():
+    ALBUM_DAT = '''O:5:"album":1:{s:6:"fields";a:3:{s:4:"name";s:8:"vacation";s:5:"title";s:5:"Vacay";s:11:"description";s:6:"See ya";}}'''
+    serializer = gallery.Serializer()
+
+    album = serializer.loads(ALBUM_DAT)
+
+    assert album.name == 'vacation'
+    assert album.parent == None
+    assert album.title == 'Vacay'
+    assert album.description == 'See ya'
