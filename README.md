@@ -16,6 +16,8 @@ $ gallery2smugmug --help
 Usage:
   gallery2smugmug list [--gallery-path=<directory>]
 
+  gallery2smugmug view <album> [--gallery-path=<directory>]
+
   gallery2smugmug upload [--api_key=<api_key>]
                          [--nick=<nickname>]
                          [--gallery-path=<directory>]
