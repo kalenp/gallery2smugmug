@@ -10,11 +10,15 @@ class StaticGalleryFS(object):
 
     @property
     def albums(self):
-        return self._albums.itervalues()
+        return self._albums
 
     @property
     def photos(self):
         return self._photos
+
+    @property
+    def album_names(self):
+        return self._albums.iterkeys()
 
 
 def test_gallery_builds_tree():
@@ -50,7 +54,8 @@ def test_gallery_albums():
 
     gal = gallery.Gallery(galleryfs)
 
-    assert gal.albums == albums
+    assert gal.albums['Mexico'] == mexico
+    assert gal.albums['Vacation'] == vacation
 
 
 def test_gallery_albums_contain_photos():
@@ -105,10 +110,8 @@ def test_galleryfs_load_albums(fs):
 
     galleryfs = gallery.GalleryFilesystem(TestSerializer())
 
-    assert galleryfs.albums == [
-        TestSerializer.VACATION,
-        TestSerializer.MEXICO,
-    ]
+    assert galleryfs.albums['vacation'] == TestSerializer.VACATION
+    assert galleryfs.albums['mexico'] == TestSerializer.MEXICO
 
 
 def test_galleryfs_load_photos(fs):
@@ -124,10 +127,8 @@ def test_galleryfs_load_photos(fs):
 
     galleryfs = gallery.GalleryFilesystem(TestSerializer())
 
-    assert galleryfs.photos == {
-        'vacation': TestSerializer.VACATION_PHOTOS,
-        'mexico': TestSerializer.MEXICO_PHOTOS,
-    }
+    assert galleryfs.photos['vacation'] == TestSerializer.VACATION_PHOTOS
+    assert galleryfs.photos['mexico'] == TestSerializer.MEXICO_PHOTOS
 
 
 def test_unserialize_albumdb_dat():

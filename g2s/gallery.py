@@ -1,6 +1,24 @@
+import collections
+
 import phpserialize
 
 from . import util
+
+
+class AlbumDict(object):
+    def __init__(self, galleryfs):
+        self._galleryfs = galleryfs
+
+    def __getitem__(self, album_name):
+        photos_dict = self._galleryfs.photos
+        album = self._galleryfs.albums[album_name]
+        album.photos = photos_dict[album_name]
+        return album
+
+    def items(self):
+        return [(album_name, self[album_name])
+            for album_name in self._galleryfs.album_names]
+
 
 class Gallery(object):
     def __init__(self, galleryfs):
@@ -8,13 +26,7 @@ class Gallery(object):
 
     @property
     def albums(self):
-        albums = {}
-        photos_dict = self._galleryfs.photos
-        for album in self._galleryfs.albums:
-            name = album.name
-            album.photos = photos_dict[name]
-            albums[name] = album
-        return albums
+        return AlbumDict(self._galleryfs)
 
     def iter_albums(self):
         return self.album_tree.iter_objects(0)
@@ -22,8 +34,8 @@ class Gallery(object):
     @property
     def album_tree(self):
         tree = util.ParentNameTree()
-        for album in self._galleryfs.albums:
-            tree.add_object(album)
+        for name in self._galleryfs.album_names:
+            tree.add_object(self._galleryfs.albums[name])
         return tree
 
 
@@ -47,31 +59,46 @@ class Album(object):
         return cls(**kwargs)
 
 
+class LazyLoadingDict(collections.defaultdict):
+    '''Variation of defaultdict which passes the key to the default factory'''
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = value = self.default_factory(key)
+        return value
+
+
 class GalleryFilesystem(object):
     def __init__(self, serializer):
         self._serializer = serializer
+        self._album_names = None
 
     @property
     def albums(self):
-        albums = []
-        for name in self._album_names:
+        def load_album(name):
             with open('albums/{}/album.dat'.format(name), 'r') as album_dat:
-                albums.append(self._serializer.loads(album_dat.read()))
-        return albums
+                return self._serializer.loads(album_dat.read())
+        # Use a lazy loader so we can present a mapping interface for the
+        # client, but don't have to load all of the albums on initialization
+        return LazyLoadingDict(load_album)
 
     @property
     def photos(self):
-        photos = {}
-        for name in self._album_names:
+        def load_photos(name):
             with open('albums/{}/photos.dat'.format(name), 'r') as photos_dat:
-                photos[name] = self._serializer.loads(photos_dat.read())
-        return photos
+                return self._serializer.loads(photos_dat.read())
+        # Use a lazy loader so we can present a mapping interface for the
+        # client, but don't have to load all of the albums on initialization
+        return LazyLoadingDict(load_photos)
 
     @property
-    def _album_names(self):
-        with open('albums/albumdb.dat', 'r') as albumdb_dat:
-            albumdb = self._serializer.loads(albumdb_dat.read())
-        return albumdb
+    def album_names(self):
+        if self._album_names is None:
+            with open('albums/albumdb.dat', 'r') as albumdb_dat:
+                albumdb = self._serializer.loads(albumdb_dat.read())
+            self._album_names = albumdb
+        return self._album_names
 
 
 class Serializer(object):
