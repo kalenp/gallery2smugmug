@@ -6,26 +6,22 @@ from g2s import gallery
 
 
 class StaticGallery(object):
-    def __init__(self, albums):
-        self._albums = albums
+    def __init__(self, albums, photos):
+        self.albums = albums
+        self.photos = photos
 
     @property
-    def albums(self):
-        return {
-            album.name: album for (album, depth) in self._albums
-        }
-
-    def iter_albums(self):
-        return self._albums
+    def album_names(self):
+        return self.albums.iterkeys()
 
 
 def test_list():
     galleries = collections.defaultdict(
-        lambda: StaticGallery([
-            (gallery.Album('Vacation'), 0),
-            (gallery.Album('Mexico',), 1),
-            (gallery.Album('Graduation'), 0),
-        ])
+        lambda: StaticGallery({
+            'Graduation': gallery.Album('Graduation'),
+            'Mexico': gallery.Album('Mexico', parent='Vacation'),
+            'Vacation': gallery.Album('Vacation'),
+        }, {})
     )
     cli = app.CLI(galleries, None)
 
@@ -40,12 +36,8 @@ Name: Graduation
 
 def test_list_specific_directory():
     galleries = {
-        'first': StaticGallery([
-            (gallery.Album('First'), 0),
-        ]),
-        'second': StaticGallery([
-            (gallery.Album('Second'), 0),
-        ]),
+        'first': StaticGallery({'First': gallery.Album('First')}, {}),
+        'second': StaticGallery({'Second': gallery.Album('Second')}, {}),
     }
 
     cli = app.CLI(galleries, None)
@@ -59,16 +51,16 @@ def test_list_specific_directory():
 
 
 def test_view_gallery_details():
-    photos = [object()] * 5
+    albums = {
+        'mexico': gallery.Album(
+            title='Mexico 2016',
+            name='mexico',
+            description='We went diving in Cancun.  It was great!',
+        )
+    }
+    photos = { 'mexico': [object()] * 5 }
     galleries = {
-        '.': StaticGallery([
-            (gallery.Album(
-                title='Mexico 2016',
-                name='mexico',
-                description='We went diving in Cancun.  It was great!',
-                photos=photos,
-            ), 0)
-        ]),
+        '.': StaticGallery(albums=albums, photos=photos),
     }
 
     cli = app.CLI(galleries, None)

@@ -1,10 +1,16 @@
+import collections
+
+
 class ParentNameTree(object):
     '''Tree which stores nodes based on objects which have a name and parent
     name'''
 
-    def __init__(self):
+    def __init__(self, objects=[]):
         # a collection of all objects, keyed by the object name for easy lookup
         self._nodes = {}
+
+        for obj in objects:
+            self.add_object(obj)
 
     def add_object(self, obj):
         node = ObjectNode(obj)
@@ -24,7 +30,7 @@ class ParentNameTree(object):
 
         self._nodes[obj.name] = node
 
-    def iter_objects(self, depth):
+    def iter_objects(self, depth=0):
         roots = [
             node
             for node in self._nodes.itervalues()
@@ -63,3 +69,13 @@ class TempNode(TreeNode):
     def __init__(self, name):
         self.name = name
         super(TempNode, self).__init__()
+
+
+class LazyLoadingDict(collections.defaultdict):
+    '''Variation of defaultdict which passes the key to the default factory'''
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = value = self.default_factory(key)
+        return value

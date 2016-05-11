@@ -1,81 +1,7 @@
+import datetime
 import os
 
 from g2s import gallery
-
-
-class StaticGalleryFS(object):
-    def __init__(self, albums, photos):
-        self._albums = albums
-        self._photos = photos
-
-    @property
-    def albums(self):
-        return self._albums
-
-    @property
-    def photos(self):
-        return self._photos
-
-    @property
-    def album_names(self):
-        return self._albums.iterkeys()
-
-
-def test_gallery_builds_tree():
-    vacation = gallery.Album('Vacation')
-    mexico = gallery.Album('Mexico', parent='Vacation')
-    albums = {
-        'Mexico': mexico,
-        'Vacation': vacation,
-    }
-    photos = {}
-    galleryfs = StaticGalleryFS(albums, photos)
-
-    gal = gallery.Gallery(galleryfs)
-
-    assert list(gal.iter_albums()) == [
-        (vacation, 0),
-        (mexico, 1),
-    ]
-
-
-def test_gallery_albums():
-    vacation = gallery.Album('Vacation')
-    mexico = gallery.Album('Mexico', parent='Vacation')
-    albums = {
-        'Mexico': mexico,
-        'Vacation': vacation,
-    }
-    photos = {
-        'Mexico': object(),
-        'Vacation': object(),
-    }
-    galleryfs = StaticGalleryFS(albums, photos)
-
-    gal = gallery.Gallery(galleryfs)
-
-    assert gal.albums['Mexico'] == mexico
-    assert gal.albums['Vacation'] == vacation
-
-
-def test_gallery_albums_contain_photos():
-    vacation = gallery.Album('Vacation')
-    mexico = gallery.Album('Mexico', parent='Vacation')
-    albums = {
-        'Mexico': mexico,
-        'Vacation': vacation,
-    }
-    mexico_photos = object()
-    vacation_photos = object()
-    photos = {
-        'Mexico': mexico_photos,
-        'Vacation': vacation_photos,
-    }
-    galleryfs = StaticGalleryFS(albums, photos)
-
-    gal = gallery.Gallery(galleryfs)
-
-    assert {name: album.photos for (name, album) in gal.albums.items()} == photos
 
 
 class TestSerializer(object):
@@ -108,7 +34,7 @@ def test_galleryfs_load_albums(fs):
     with open('albums/mexico/album.dat', 'w+') as mexico:
         mexico.write('mexico')
 
-    galleryfs = gallery.GalleryFilesystem(TestSerializer())
+    galleryfs = gallery.GalleryFilesystem(serializer=TestSerializer())
 
     assert galleryfs.albums['vacation'] == TestSerializer.VACATION
     assert galleryfs.albums['mexico'] == TestSerializer.MEXICO
@@ -125,7 +51,25 @@ def test_galleryfs_load_photos(fs):
     with open('albums/mexico/photos.dat', 'w+') as mexico:
         mexico.write('mexico_photos')
 
-    galleryfs = gallery.GalleryFilesystem(TestSerializer())
+    galleryfs = gallery.GalleryFilesystem(serializer=TestSerializer())
+
+    assert galleryfs.photos['vacation'] == TestSerializer.VACATION_PHOTOS
+    assert galleryfs.photos['mexico'] == TestSerializer.MEXICO_PHOTOS
+
+
+def test_galleryfs_load_album_from_directory(fs):
+    os.makedirs('dir/albums')
+    with open('dir/albums/albumdb.dat', 'w+') as albumdb:
+        albumdb.write('albumdb')
+    os.mkdir('dir/albums/vacation')
+    with open('dir/albums/vacation/photos.dat', 'w+') as vacation:
+        vacation.write('vacation_photos')
+    os.mkdir('dir/albums/mexico')
+    with open('dir/albums/mexico/photos.dat', 'w+') as mexico:
+        mexico.write('mexico_photos')
+
+    galleryfs = gallery.GalleryFilesystem(directory='dir',
+                                     serializer=TestSerializer())
 
     assert galleryfs.photos['vacation'] == TestSerializer.VACATION_PHOTOS
     assert galleryfs.photos['mexico'] == TestSerializer.MEXICO_PHOTOS
@@ -160,7 +104,7 @@ def test_unserialize_album_optional_parent():
     album = serializer.loads(ALBUM_DAT)
 
     assert album.name == 'vacation'
-    assert album.parent == None
+    assert album.parent is None
 
 
 def test_unserialize_album_case_insensitive():
@@ -170,7 +114,7 @@ def test_unserialize_album_case_insensitive():
     album = serializer.loads(ALBUM_DAT)
 
     assert album.name == 'vacation'
-    assert album.parent == None
+    assert album.parent is None
 
 
 def test_unserialize_album_additional_properties():
@@ -180,7 +124,7 @@ def test_unserialize_album_additional_properties():
     album = serializer.loads(ALBUM_DAT)
 
     assert album.name == 'vacation'
-    assert album.parent == None
+    assert album.parent is None
     assert album.title == 'Vacay'
     assert album.description == 'See ya'
 
@@ -194,4 +138,7 @@ def test_unserialize_photos():
     photos = serializer.loads(PHOTOS_DAT)
 
     assert len(photos) == 1
-    assert photos[0].image.type == 'jpg'
+    assert photos[0].type == 'jpg'
+    assert photos[0].name == 'Untitled_4'
+    assert photos[0].caption == 'The view from our hotel.'
+    assert photos[0].captured_at == datetime.date.fromtimestamp(1079529094)

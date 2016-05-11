@@ -1,117 +1,102 @@
-import collections
+import datetime
 
 import phpserialize
 
 from . import util
 
 
-class AlbumDict(object):
-    def __init__(self, galleryfs):
-        self._galleryfs = galleryfs
-
-    def __getitem__(self, album_name):
-        photos_dict = self._galleryfs.photos
-        album = self._galleryfs.albums[album_name]
-        album.photos = photos_dict[album_name]
-        return album
-
-    def items(self):
-        return [(album_name, self[album_name])
-            for album_name in self._galleryfs.album_names]
-
-
-class Gallery(object):
-    def __init__(self, galleryfs):
-        self._galleryfs = galleryfs
-
-    @property
-    def albums(self):
-        return AlbumDict(self._galleryfs)
-
-    def iter_albums(self):
-        return self.album_tree.iter_objects(0)
-
-    @property
-    def album_tree(self):
-        tree = util.ParentNameTree()
-        for name in self._galleryfs.album_names:
-            tree.add_object(self._galleryfs.albums[name])
-        return tree
-
-
 class Album(object):
-    def __init__(self, name, parent=None, title=None, description=None,
-                 photos=[]):
+    def __init__(self, name, parent=None, title=None, description=None):
         self.name = name
         self.description = description
         self.parent = parent
         self.title = title
-        self.photos = photos
-
-    @classmethod
-    def from_fields(cls, fields):
-        kwargs = {
-            key: value for (key, value) in fields.iteritems()
-            if key in ['name', 'title', 'description']
-        }
-        if 'parentAlbumName' in fields:
-            kwargs['parent'] = fields['parentAlbumName']
-        return cls(**kwargs)
 
 
-class LazyLoadingDict(collections.defaultdict):
-    '''Variation of defaultdict which passes the key to the default factory'''
-
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key)
-        self[key] = value = self.default_factory(key)
-        return value
-
-
-class GalleryFilesystem(object):
-    def __init__(self, serializer):
-        self._serializer = serializer
-        self._album_names = None
-
-    @property
-    def albums(self):
-        def load_album(name):
-            with open('albums/{}/album.dat'.format(name), 'r') as album_dat:
-                return self._serializer.loads(album_dat.read())
-        # Use a lazy loader so we can present a mapping interface for the
-        # client, but don't have to load all of the albums on initialization
-        return LazyLoadingDict(load_album)
-
-    @property
-    def photos(self):
-        def load_photos(name):
-            with open('albums/{}/photos.dat'.format(name), 'r') as photos_dat:
-                return self._serializer.loads(photos_dat.read())
-        # Use a lazy loader so we can present a mapping interface for the
-        # client, but don't have to load all of the albums on initialization
-        return LazyLoadingDict(load_photos)
-
-    @property
-    def album_names(self):
-        if self._album_names is None:
-            with open('albums/albumdb.dat', 'r') as albumdb_dat:
-                albumdb = self._serializer.loads(albumdb_dat.read())
-            self._album_names = albumdb
-        return self._album_names
+class Photo(object):
+    def __init__(self, name, type=None, caption=None, captured_at=None):
+        self.name = name
+        self.type = type
+        self.caption = caption
+        self.captured_at = captured_at
 
 
 class Serializer(object):
     def loads(self, data):
         def object_hook(name, d):
+            # Need to lowercase these, because the data is inconsistent in how
+            # it names the classes
             name = name.lower()
             if name == 'album':
                 fields = d['fields']
-                return Album.from_fields(fields)
-            else:
-                return phpserialize.phpobject(name, d)
+                return Album(name=fields['name'], title=fields.get('title'),
+                             description=fields.get('description'),
+                             parent=fields.get('parentAlbumName'))
+            elif name == 'albumitem':
+                # This contains info about the image and the thumbnail.  But
+                # since we don't care about the thumbnail, just collapse this
+                # together with the contained image, which we already parsed
+                image = d['image']
+                image.caption = d['caption']
+                image.captured_at = datetime.date.fromtimestamp(
+                    d['itemCaptureDate'][0])
+                return image
+            elif name == 'image':
+                return Photo(name=d['name'], type=d['type'])
 
         loaded = phpserialize.loads(data, object_hook=object_hook)
         if isinstance(loaded, dict):
             loaded = phpserialize.dict_to_list(loaded)
         return loaded
+
+
+class GalleryFilesystem(object):
+    def __init__(self, directory='.', serializer=Serializer()):
+        self._directory = directory
+        self._serializer = serializer
+        self._album_names = None
+
+    @property
+    def _album_dir(self):
+        return '{}/albums'.format(self._directory)
+
+    @property
+    def album_names(self):
+        '''Get a list of all of the album names'''
+
+        if self._album_names is None:
+            albumdb_dat_path = '{}/albumdb.dat'.format(self._album_dir)
+            with open(albumdb_dat_path, 'r') as albumdb_dat:
+                albumdb = self._serializer.loads(albumdb_dat.read())
+            self._album_names = albumdb
+        return self._album_names
+
+    @property
+    def albums(self):
+        '''Get a mapping of album names to deserialized album objects
+
+        The mapping uses a lazy loader, so not all of the keys are present
+        initially, but this also reduces the initialization overhead.  Use
+        `album_names` to get the list of available albums.
+        '''
+
+        def load_album(name):
+            album_dat_path = '{}/{}/album.dat'.format(self._album_dir, name)
+            with open(album_dat_path, 'r') as album_dat:
+                return self._serializer.loads(album_dat.read())
+        return util.LazyLoadingDict(load_album)
+
+    @property
+    def photos(self):
+        '''Get a mapping of album names to deserialized photos objects
+
+        The mapping uses a lazy loader, so not all of the keys are present
+        initially, but this also reduces the initialization overhead.  Use
+        `album_names` to get the list of available albums.
+        '''
+
+        def load_photos(name):
+            photos_dat_path = '{}/{}/photos.dat'.format(self._album_dir, name)
+            with open(photos_dat_path, 'r') as photos_dat:
+                return self._serializer.loads(photos_dat.read())
+        return util.LazyLoadingDict(load_photos)
