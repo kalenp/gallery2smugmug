@@ -14,9 +14,30 @@ class Album(object):
 
 
 class Photo(object):
-    def __init__(self, name, type=None, caption=None, captured_at=None):
+    def __init__(self, name, image_type=None, caption=None, captured_at=None):
         self.name = name
-        self.type = type
+        self.image_type = image_type
+        self.caption = caption
+        self.captured_at = captured_at
+
+
+class AlbumItem(object):
+    PHOTO = 'photo'
+    SUBALBUM = 'subalbum'
+
+    @classmethod
+    def SubAlbum(cls, name, **kwargs):
+        return cls(name, cls.SUBALBUM, **kwargs)
+
+    @classmethod
+    def Photo(cls, name, **kwargs):
+        return cls(name, cls.PHOTO, **kwargs)
+
+    def __init__(self, name, obj_type, image_type=None, caption=None,
+                 captured_at=None):
+        self.name = name
+        self.obj_type = obj_type
+        self.image_type = image_type
         self.caption = caption
         self.captured_at = captured_at
 
@@ -36,13 +57,20 @@ class Serializer(object):
                 # This contains info about the image and the thumbnail.  But
                 # since we don't care about the thumbnail, just collapse this
                 # together with the contained image, which we already parsed
-                image = d['image']
-                image.caption = d['caption']
-                image.captured_at = datetime.date.fromtimestamp(
-                    d['itemCaptureDate'][0])
-                return image
+                kwargs = {'caption': d['caption']}
+                if d['isAlbumName']:
+                    return AlbumItem.SubAlbum(d['isAlbumName'],
+                                              caption=d['caption'])
+                else:
+                    image = d['image']
+                    captured_at=datetime.date.fromtimestamp(
+                        d['itemCaptureDate'][0])
+                    return AlbumItem.Photo(image.name,
+                                           caption=d['caption'],
+                                           image_type=image.image_type,
+                                           captured_at=captured_at)
             elif name == 'image':
-                return Photo(name=d['name'], type=d['type'])
+                return Photo(name=d['name'], image_type=d['type'])
 
         loaded = phpserialize.loads(data, object_hook=object_hook)
         if isinstance(loaded, dict):

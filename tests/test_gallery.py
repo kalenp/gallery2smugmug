@@ -129,6 +129,7 @@ def test_unserialize_album_additional_properties():
     assert album.description == 'See ya'
 
 
+# A photos.dat file with only a single photo in it
 PHOTOS_DAT = '''a:1:{i:0;O:9:"AlbumItem":19:{s:8:"exifData";N;s:4:"rank";N;s:11:"extraFields";a:0:{}s:14:"highlightImage";N;s:5:"image";O:5:"Image":12:{s:7:"thumb_x";N;s:7:"thumb_y";N;s:4:"name";s:10:"Untitled_4";s:11:"thumb_width";N;s:10:"raw_height";i:1200;s:12:"thumb_height";N;s:6:"height";i:436;s:5:"width";i:640;s:7:"version";i:31;s:9:"raw_width";i:1760;s:4:"type";s:3:"jpg";s:11:"resizedName";s:16:"Untitled_4.sized";}s:7:"emailMe";N;s:5:"owner";s:21:"1069957692_2062256631";s:8:"comments";N;s:6:"clicks";i:68;s:7:"caption";s:24:"The view from our hotel.";s:7:"version";i:31;s:10:"uploadDate";i:1079529094;s:11:"isAlbumName";N;s:8:"keywords";N;s:9:"highlight";b:0;s:6:"hidden";N;s:7:"preview";N;s:9:"thumbnail";O:5:"Image":12:{s:7:"thumb_x";N;s:7:"thumb_y";N;s:4:"name";s:16:"Untitled_4.thumb";s:11:"thumb_width";N;s:10:"raw_height";i:102;s:12:"thumb_height";N;s:6:"height";i:102;s:5:"width";i:150;s:7:"version";i:31;s:9:"raw_width";i:150;s:4:"type";s:3:"jpg";s:11:"resizedName";N;}s:15:"itemCaptureDate";a:11:{i:0;i:1079529094;s:4:"mday";i:17;s:7:"seconds";i:34;s:5:"month";s:5:"March";s:5:"hours";s:2:"05";s:3:"mon";s:2:"03";s:4:"year";i:2004;s:4:"yday";i:76;s:4:"wday";i:3;s:7:"minutes";i:11;s:7:"weekday";s:9:"Wednesday";}}}'''
 
 
@@ -138,7 +139,25 @@ def test_unserialize_photos():
     photos = serializer.loads(PHOTOS_DAT)
 
     assert len(photos) == 1
-    assert photos[0].type == 'jpg'
+    assert photos[0].obj_type == gallery.AlbumItem.PHOTO
+    assert photos[0].image_type == 'jpg'
     assert photos[0].name == 'Untitled_4'
     assert photos[0].caption == 'The view from our hotel.'
     assert photos[0].captured_at == datetime.date.fromtimestamp(1079529094)
+
+
+# A photos.dat file with a single subalbum in it
+SUBALBUM_PHOTOS_DAT ='''a:1:{i:0;O:9:"AlbumItem":19:{s:5:"image";N;s:9:"thumbnail";N;s:7:"preview";N;s:7:"caption";N;s:6:"hidden";N;s:9:"highlight";i:1;s:14:"highlightImage";O:5:"Image":12:{s:4:"name";s:17:"album07.highlight";s:4:"type";s:3:"jpg";s:5:"width";i:134;s:6:"height";i:200;s:11:"resizedName";N;s:7:"thumb_x";N;s:7:"thumb_y";N;s:11:"thumb_width";N;s:12:"thumb_height";N;s:9:"raw_width";i:134;s:10:"raw_height";i:200;s:7:"version";i:31;}s:11:"isAlbumName";s:7:"album07";s:6:"clicks";N;s:8:"keywords";N;s:8:"comments";N;s:10:"uploadDate";N;s:15:"itemCaptureDate";N;s:8:"exifData";N;s:5:"owner";N;s:11:"extraFields";a:0:{}s:4:"rank";N;s:7:"version";i:31;s:7:"emailMe";N;}}'''
+
+
+def test_unserialize_subalbum_photos():
+    serializer = gallery.Serializer()
+
+    photos = serializer.loads(SUBALBUM_PHOTOS_DAT)
+
+    assert len(photos) == 1
+    assert photos[0].obj_type == gallery.AlbumItem.SUBALBUM
+    assert photos[0].image_type == None
+    assert photos[0].name == 'album07'
+    assert photos[0].caption == None
+    assert photos[0].captured_at == None
