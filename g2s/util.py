@@ -24,9 +24,9 @@ class ParentNameTree(object):
             )
             parent_node.add_child(node)
         elif obj.name in self._nodes:
-                # root node, already included as a temp parent node
-                temp_node = self._nodes[obj.name]
-                node.replace(temp_node)
+            # root node, already included as a temp parent node
+            temp_node = self._nodes[obj.name]
+            node.replace(temp_node)
 
         self._nodes[obj.name] = node
 
