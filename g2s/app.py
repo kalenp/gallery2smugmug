@@ -26,13 +26,16 @@ def CLI(galleries, smugmug):
         gallery = galleries[gallery_path]
         album = gallery.albums[album_name]
         photos = gallery.photos[album_name]
+        subalbums = gallery.subalbums[album_name]
         album_format = \
 '''Album: {}
     Description: {}
     Short Name: {}
-    Photo Count: {}'''
+    Photo Count: {}
+    SubAlbum Count: {}'''
         click.echo(album_format.format(
-            album.title, album.description, album.name, len(photos)
+            album.title, album.description, album.name, len(photos),
+            len(subalbums)
         ))
 
     return cli

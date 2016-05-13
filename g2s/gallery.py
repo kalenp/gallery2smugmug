@@ -1,5 +1,6 @@
 import datetime
 
+from cached_property import cached_property
 import phpserialize
 
 from . import util
@@ -82,24 +83,21 @@ class GalleryFilesystem(object):
     def __init__(self, directory='.', serializer=Serializer()):
         self._directory = directory
         self._serializer = serializer
-        self._album_names = None
 
     @property
     def _album_dir(self):
         return '{}/albums'.format(self._directory)
 
-    @property
+    @cached_property
     def album_names(self):
         '''Get a list of all of the album names'''
 
-        if self._album_names is None:
-            albumdb_dat_path = '{}/albumdb.dat'.format(self._album_dir)
-            with open(albumdb_dat_path, 'r') as albumdb_dat:
-                albumdb = self._serializer.loads(albumdb_dat.read())
-            self._album_names = albumdb
-        return self._album_names
+        albumdb_dat_path = '{}/albumdb.dat'.format(self._album_dir)
+        with open(albumdb_dat_path, 'r') as albumdb_dat:
+            albumdb = self._serializer.loads(albumdb_dat.read())
+        return albumdb
 
-    @property
+    @cached_property
     def albums(self):
         '''Get a mapping of album names to deserialized album objects
 
@@ -114,6 +112,14 @@ class GalleryFilesystem(object):
                 return self._serializer.loads(album_dat.read())
         return util.LazyLoadingDict(load_album)
 
+    @cached_property
+    def _photos_dat(self):
+        def load_photos_dat(name):
+            photos_dat_path = '{}/{}/photos.dat'.format(self._album_dir, name)
+            with open(photos_dat_path, 'r') as photos_dat:
+                return self._serializer.loads(photos_dat.read())
+        return util.LazyLoadingDict(load_photos_dat)
+
     @property
     def photos(self):
         '''Get a mapping of album names to deserialized photos objects
@@ -124,7 +130,20 @@ class GalleryFilesystem(object):
         '''
 
         def load_photos(name):
-            photos_dat_path = '{}/{}/photos.dat'.format(self._album_dir, name)
-            with open(photos_dat_path, 'r') as photos_dat:
-                return self._serializer.loads(photos_dat.read())
+            return [item for item in self._photos_dat[name]
+                    if item.obj_type == AlbumItem.PHOTO]
         return util.LazyLoadingDict(load_photos)
+
+    @property
+    def subalbums(self):
+        '''Get a mapping of album names to deserialized subalbum objects
+
+        The mapping uses a lazy loader, so not all of the keys are present
+        initially, but this also reduces the initialization overhead.  Use
+        `album_names` to get the list of available albums.
+        '''
+
+        def load_subalbums(name):
+            return [item for item in self._photos_dat[name]
+                    if item.obj_type == AlbumItem.SUBALBUM]
+        return util.LazyLoadingDict(load_subalbums)

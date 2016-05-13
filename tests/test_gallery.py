@@ -4,12 +4,15 @@ import os
 from g2s import gallery
 
 
+# Gallery
+
 class TestSerializer(object):
     ALBUMS = ['vacation', 'mexico']
     MEXICO = object()
-    MEXICO_PHOTOS = object()
+    MEXICO_PHOTOS = [ gallery.AlbumItem.Photo('a') ]
     VACATION = object()
-    VACATION_PHOTOS = object()
+    MEXICO_SUBALBUM = gallery.AlbumItem.SubAlbum('mexico')
+    VACATION_PHOTOS = [ MEXICO_SUBALBUM ]
 
     _serialization = {
         'albumdb': ALBUMS,
@@ -53,8 +56,25 @@ def test_galleryfs_load_photos(fs):
 
     galleryfs = gallery.GalleryFilesystem(serializer=TestSerializer())
 
-    assert galleryfs.photos['vacation'] == TestSerializer.VACATION_PHOTOS
+    assert galleryfs.photos['vacation'] == []
     assert galleryfs.photos['mexico'] == TestSerializer.MEXICO_PHOTOS
+
+
+def test_galleryfs_load_subalbums(fs):
+    os.mkdir('albums')
+    with open('albums/albumdb.dat', 'w+') as albumdb:
+        albumdb.write('albumdb')
+    os.mkdir('albums/vacation')
+    with open('albums/vacation/photos.dat', 'w+') as vacation:
+        vacation.write('vacation_photos')
+    os.mkdir('albums/mexico')
+    with open('albums/mexico/photos.dat', 'w+') as mexico:
+        mexico.write('mexico_photos')
+
+    galleryfs = gallery.GalleryFilesystem(serializer=TestSerializer())
+
+    assert galleryfs.subalbums['vacation'] == [ TestSerializer.MEXICO_SUBALBUM ]
+    assert galleryfs.subalbums['mexico'] == []
 
 
 def test_galleryfs_load_album_from_directory(fs):
@@ -71,9 +91,11 @@ def test_galleryfs_load_album_from_directory(fs):
     galleryfs = gallery.GalleryFilesystem(directory='dir',
                                      serializer=TestSerializer())
 
-    assert galleryfs.photos['vacation'] == TestSerializer.VACATION_PHOTOS
+    assert galleryfs.photos['vacation'] == []
     assert galleryfs.photos['mexico'] == TestSerializer.MEXICO_PHOTOS
 
+
+# Serialization
 
 def test_unserialize_albumdb_dat():
     ALBUM_DB_DAT = '''a:2:{i:0;s:8:"vacation";i:1;s:6:"mexico";}'''

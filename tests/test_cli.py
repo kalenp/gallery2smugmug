@@ -6,9 +6,10 @@ from g2s import gallery
 
 
 class StaticGallery(object):
-    def __init__(self, albums, photos):
+    def __init__(self, albums, photos, subalbums):
         self.albums = albums
         self.photos = photos
+        self.subalbums = subalbums
 
     @property
     def album_names(self):
@@ -17,11 +18,11 @@ class StaticGallery(object):
 
 def test_list():
     galleries = collections.defaultdict(
-        lambda: StaticGallery({
+        lambda: StaticGallery(albums={
             'Graduation': gallery.Album('Graduation'),
             'Mexico': gallery.Album('Mexico', parent='Vacation'),
             'Vacation': gallery.Album('Vacation'),
-        }, {})
+        }, photos={}, subalbums={})
     )
     cli = app.CLI(galleries, None)
 
@@ -36,8 +37,16 @@ Name: Graduation
 
 def test_list_specific_directory():
     galleries = {
-        'first': StaticGallery({'First': gallery.Album('First')}, {}),
-        'second': StaticGallery({'Second': gallery.Album('Second')}, {}),
+        'first': StaticGallery(
+            albums={'First': gallery.Album('First')},
+            photos={},
+            subalbums={}
+        ),
+        'second': StaticGallery(
+            albums={'Second': gallery.Album('Second')},
+            photos={},
+            subalbums={}
+        ),
     }
 
     cli = app.CLI(galleries, None)
@@ -59,8 +68,9 @@ def test_view_gallery_details():
         )
     }
     photos = { 'mexico': [object()] * 5 }
+    subalbums = { 'mexico': [] }
     galleries = {
-        '.': StaticGallery(albums=albums, photos=photos),
+        '.': StaticGallery(albums=albums, photos=photos, subalbums=subalbums),
     }
 
     cli = app.CLI(galleries, None)
@@ -73,4 +83,5 @@ def test_view_gallery_details():
     Description: We went diving in Cancun.  It was great!
     Short Name: mexico
     Photo Count: 5
+    SubAlbum Count: 0
 '''
